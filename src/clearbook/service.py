@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
+import os
 from datetime import datetime
 from typing import Optional
+
+import httpx
 
 from clearbook.models import (
     Address,
@@ -21,6 +25,9 @@ from clearbook.models import (
 
 logger = logging.getLogger(__name__)
 
+# Google Places API config
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
+
 
 class ClearbookService:
     """Orchestrates searches across SRA, FCA, and Companies House."""
@@ -31,14 +38,17 @@ class ClearbookService:
         fca_email: str = "",
         fca_key: str = "",
         companies_house_key: str = "",
+        google_places_key: str = "",
     ):
         self._sra_key = sra_api_key
         self._fca_email = fca_email
         self._fca_key = fca_key
         self._ch_key = companies_house_key
+        self._google_key = google_places_key or GOOGLE_PLACES_API_KEY
         self._sra = None
         self._fca = None
         self._ch = None
+        self._http = None
 
     @property
     def sra(self):
@@ -60,6 +70,12 @@ class ClearbookService:
             from clearbook.clients.companies_house import CompaniesHouseClient
             self._ch = CompaniesHouseClient(api_key=self._ch_key)
         return self._ch
+
+    @property
+    def http(self):
+        if self._http is None:
+            self._http = httpx.AsyncClient(timeout=10.0)
+        return self._http
 
     def _make_id(self, regulator: str, ref: str) -> str:
         raw = f"{regulator}:{ref}"
@@ -86,9 +102,12 @@ class ClearbookService:
             if fca_results:
                 data_sources.append("FCA")
 
-        # Enrich with Companies House data
+        # Enrich all providers in parallel
+        enrichment_tasks = []
         for provider in providers:
-            await self._enrich_with_companies_house(provider)
+            enrichment_tasks.append(self._enrich_provider(provider))
+        if enrichment_tasks:
+            await asyncio.gather(*enrichment_tasks, return_exceptions=True)
 
         providers = providers[: filters.max_results]
 
@@ -111,7 +130,7 @@ class ClearbookService:
             provider = await self._get_fca_provider(reference_number)
 
         if provider:
-            await self._enrich_with_companies_house(provider)
+            await self._enrich_provider(provider)
 
         return provider
 
@@ -135,6 +154,15 @@ class ClearbookService:
                 logger.warning(f"Failed to get FCA disciplinary history for {reference_number}: {e}")
                 return []
         return []
+
+    # ---- Enrichment ----
+
+    async def _enrich_provider(self, provider: Provider) -> None:
+        """Enrich a provider with Companies House + Google Places data in parallel."""
+        tasks = [self._enrich_with_companies_house(provider)]
+        if self._google_key:
+            tasks.append(self._enrich_with_google_places(provider))
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     # ---- SRA ----
 
@@ -166,7 +194,6 @@ class ClearbookService:
 
     def _sra_org_to_provider(self, org) -> Provider:
         """Convert SRAOrganisation to Provider model."""
-        # Extract address from head office or first office
         address = Address()
         head = org.head_office if hasattr(org, "head_office") else None
         if head is None and hasattr(org, "offices") and org.offices:
@@ -180,7 +207,6 @@ class ClearbookService:
                 postcode=getattr(head, "postcode", ""),
             )
 
-        # Map authorisation status
         auth_status = getattr(org, "authorisation_status", "").upper()
         status_map = {
             "AUTHORISED": RegulatorStatus.AUTHORISED,
@@ -191,8 +217,9 @@ class ClearbookService:
         }
 
         sra_number = str(getattr(org, "sra_number", ""))
+        company_reg = getattr(org, "company_reg_no", "") or ""
 
-        return Provider(
+        provider = Provider(
             id=self._make_id("SRA", sra_number),
             name=getattr(org, "practice_name", ""),
             provider_type=ProviderType.CONVEYANCER,
@@ -208,9 +235,11 @@ class ClearbookService:
                     authorised_activities=getattr(org, "work_area", []),
                 )
             ],
+            company_reg_no=company_reg if company_reg else None,
             data_sources=["SRA"],
             last_updated=datetime.now().isoformat(),
         )
+        return provider
 
     # ---- FCA ----
 
@@ -255,7 +284,7 @@ class ClearbookService:
             id=self._make_id("FCA", frn),
             name=result.display_name if hasattr(result, "display_name") else getattr(result, "name", ""),
             provider_type=ProviderType.MORTGAGE_BROKER,
-            address=Address(),  # FCA search results have limited address data
+            address=Address(),
             regulatory_profiles=[
                 RegulatoryProfile(
                     regulator="FCA",
@@ -304,44 +333,84 @@ class ClearbookService:
 
     async def _enrich_with_companies_house(self, provider: Provider) -> None:
         """Cross-reference with Companies House for company health."""
-        # Try company reg number from regulatory profile first, then name search
-        company_number = None
+        if not self._ch_key:
+            return
 
-        # SRA orgs sometimes have company registration numbers
-        for rp in provider.regulatory_profiles:
-            if rp.regulator == "SRA":
-                # We'd need to store this — for now, search by name
-                break
+        company_number = provider.company_reg_no
 
         try:
-            search_result = await self.ch.search_companies(provider.name, items_per_page=1)
-            if hasattr(search_result, "items") and search_result.items:
+            if company_number and company_number.strip():
+                # Direct lookup by company reg number (most accurate)
+                padded = company_number.strip().zfill(8)
+                profile = await self.ch.get_company_profile(padded)
+            else:
+                # Fall back to name search
+                search_result = await self.ch.search_companies(provider.name, items_per_page=1)
+                if not (hasattr(search_result, "items") and search_result.items):
+                    return
                 company = search_result.items[0]
-                company_number = getattr(company, "company_number", None)
+                padded = getattr(company, "company_number", None)
+                if not padded:
+                    return
+                profile = await self.ch.get_company_profile(padded)
 
-                if company_number:
-                    # Get full profile
-                    profile = await self.ch.get_company_profile(company_number)
-                    provider.company_health = CompanyHealth(
-                        company_number=company_number,
-                        status=getattr(profile, "company_status", None),
-                        date_of_creation=getattr(profile, "date_of_creation", None),
-                        sic_codes=getattr(profile, "sic_codes", []) or [],
-                        has_insolvency_history=getattr(profile, "has_insolvency_history", False),
-                        has_charges=getattr(profile, "has_charges", False),
-                    )
+            date_created = getattr(profile, "date_of_creation", None)
+            if date_created and not isinstance(date_created, str):
+                date_created = str(date_created)
 
-                    # Get officer count
-                    try:
-                        officers = await self.ch.get_officers(company_number)
-                        if hasattr(officers, "active_count"):
-                            provider.company_health.officer_count = officers.active_count
-                        elif hasattr(officers, "total_results"):
-                            provider.company_health.officer_count = officers.total_results
-                    except Exception:
-                        pass
+            provider.company_health = CompanyHealth(
+                company_number=padded,
+                status=getattr(profile, "company_status", None),
+                date_of_creation=date_created,
+                sic_codes=getattr(profile, "sic_codes", []) or [],
+                has_insolvency_history=getattr(profile, "has_insolvency_history", False),
+                has_charges=getattr(profile, "has_charges", False),
+            )
 
-                    if "companies_house" not in provider.data_sources:
-                        provider.data_sources.append("companies_house")
+            # Get officer count
+            try:
+                officers = await self.ch.get_officers(padded)
+                if hasattr(officers, "active_count"):
+                    provider.company_health.officer_count = officers.active_count
+                elif hasattr(officers, "total_results"):
+                    provider.company_health.officer_count = officers.total_results
+            except Exception:
+                pass
+
+            if "companies_house" not in provider.data_sources:
+                provider.data_sources.append("companies_house")
+
         except Exception as e:
             logger.debug(f"Companies House enrichment failed for {provider.name}: {e}")
+
+    # ---- Google Places enrichment ----
+
+    async def _enrich_with_google_places(self, provider: Provider) -> None:
+        """Get Google rating and review count for a provider."""
+        if not self._google_key:
+            return
+
+        try:
+            # Search for the business by name + location
+            query = f"{provider.name} {provider.address.postcode}"
+            resp = await self.http.get(
+                "https://maps.googleapis.com/maps/api/place/findplacefromtext/json",
+                params={
+                    "input": query,
+                    "inputtype": "textquery",
+                    "fields": "place_id,rating,user_ratings_total,name",
+                    "key": self._google_key,
+                },
+            )
+            data = resp.json()
+
+            candidates = data.get("candidates", [])
+            if candidates:
+                place = candidates[0]
+                provider.google_rating = place.get("rating")
+                provider.google_review_count = place.get("user_ratings_total")
+                if "google_places" not in provider.data_sources:
+                    provider.data_sources.append("google_places")
+
+        except Exception as e:
+            logger.debug(f"Google Places enrichment failed for {provider.name}: {e}")

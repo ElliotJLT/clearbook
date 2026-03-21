@@ -30,6 +30,7 @@ def get_service() -> ClearbookService:
             fca_email=os.getenv("FCA_AUTH_EMAIL", ""),
             fca_key=os.getenv("FCA_AUTH_KEY", ""),
             companies_house_key=os.getenv("COMPANIES_HOUSE_API_KEY", ""),
+            google_places_key=os.getenv("GOOGLE_PLACES_API_KEY", ""),
         )
     return _service
 

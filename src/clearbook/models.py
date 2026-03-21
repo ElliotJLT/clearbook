@@ -80,6 +80,9 @@ class Provider(BaseModel):
     google_rating: Optional[float] = None
     google_review_count: Optional[int] = None
 
+    # Cross-reference keys
+    company_reg_no: Optional[str] = None  # For Companies House lookup
+
     # Metadata
     data_sources: list[str] = Field(default_factory=list)  # which APIs contributed
     last_updated: Optional[str] = None
