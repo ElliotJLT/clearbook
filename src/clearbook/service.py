@@ -22,7 +22,7 @@ from clearbook.models import (
 logger = logging.getLogger(__name__)
 
 
-class SettleService:
+class ClearbookService:
     """Orchestrates searches across SRA, FCA, and Companies House."""
 
     def __init__(
