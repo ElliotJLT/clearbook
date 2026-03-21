@@ -1,0 +1,32 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      SRA_API_KEY:
+        type: string
+        description: "SRA Data Sharing API subscription key"
+      FCA_AUTH_EMAIL:
+        type: string
+        description: "FCA Register API email"
+      FCA_AUTH_KEY:
+        type: string
+        description: "FCA Register API key"
+      COMPANIES_HOUSE_API_KEY:
+        type: string
+        description: "Companies House API key"
+    required:
+      - SRA_API_KEY
+      - FCA_AUTH_EMAIL
+      - FCA_AUTH_KEY
+  commandFunction: |-
+    (config) => ({
+      command: "python",
+      args: ["-m", "clearbook"],
+      env: {
+        SRA_API_KEY: config.SRA_API_KEY,
+        FCA_AUTH_EMAIL: config.FCA_AUTH_EMAIL,
+        FCA_AUTH_KEY: config.FCA_AUTH_KEY,
+        COMPANIES_HOUSE_API_KEY: config.COMPANIES_HOUSE_API_KEY || ""
+      }
+    })
