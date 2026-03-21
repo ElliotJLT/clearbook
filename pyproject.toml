@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "settle"
+name = "clearbook"
 version = "0.1.0"
 description = "MCP server for discovering UK regulated professional services. Agents find conveyancers, mortgage brokers, and surveyors."
 readme = "README.md"

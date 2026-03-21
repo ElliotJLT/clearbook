@@ -1,10 +1,10 @@
-# Settle — MCP Server for UK Professional Services Discovery
+# Clearbook — MCP Server for UK Professional Services Discovery
 
 ## What This Is
 An MCP server that agents call to find and evaluate UK regulated professional service providers. Aggregates SRA, FCA, and Companies House data into one queryable interface.
 
 ## The Rule
-Settle provides **factual data only**. Never evaluative. Never "recommended for you." The agent presents options, the human decides. This is a regulatory requirement (FCA information vs advice boundary), not a design choice.
+Clearbook provides **factual data only**. Never evaluative. Never "recommended for you." The agent presents options, the human decides. This is a regulatory requirement (FCA information vs advice boundary), not a design choice.
 
 ## Tech Stack
 - Python 3.10+
@@ -41,7 +41,7 @@ clients/
 ## Running
 ```bash
 pip install -e ".[dev]"
-python -m settle.server
+python -m clearbook.server
 ```
 
 ## Testing

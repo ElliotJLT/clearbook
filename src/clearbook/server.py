@@ -1,4 +1,4 @@
-"""Settle MCP Server — UK regulated professional services discovery."""
+"""Clearbook MCP Server — UK regulated professional services discovery."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from settle.models import ProviderType, SearchFilters
-from settle.service import SettleService
+from clearbook.models import ProviderType, SearchFilters
+from clearbook.service import ClearbookService
 
 mcp = FastMCP(
-    "Settle",
+    "Clearbook",
     instructions=(
         "Discover and evaluate UK regulated professional service providers. "
         "Search conveyancers, mortgage brokers, and financial advisers with "
@@ -19,13 +19,13 @@ mcp = FastMCP(
     ),
 )
 
-_service: SettleService | None = None
+_service: ClearbookService | None = None
 
 
-def get_service() -> SettleService:
+def get_service() -> ClearbookService:
     global _service
     if _service is None:
-        _service = SettleService(
+        _service = ClearbookService(
             sra_api_key=os.getenv("SRA_API_KEY", ""),
             fca_email=os.getenv("FCA_AUTH_EMAIL", ""),
             fca_key=os.getenv("FCA_AUTH_KEY", ""),
@@ -192,10 +192,10 @@ async def compare_providers(
 
 @mcp.resource("settle://about")
 def about() -> str:
-    """What Settle is and how to use it."""
-    return """# Settle — UK Professional Services Discovery
+    """What Clearbook is and how to use it."""
+    return """# Clearbook — UK Professional Services Discovery
 
-Settle helps AI agents find and evaluate UK regulated professional
+Clearbook helps AI agents find and evaluate UK regulated professional
 service providers using data from official regulatory registers.
 
 ## Available Tools
@@ -211,14 +211,14 @@ service providers using data from official regulatory registers.
 - Companies House (company health, officers, insolvency)
 
 ## Important
-Settle provides factual data only. It does not make recommendations
+Clearbook provides factual data only. It does not make recommendations
 or evaluate suitability. The user makes the final decision.
 """
 
 
 @mcp.resource("settle://regulators")
 def regulators() -> str:
-    """UK regulatory bodies covered by Settle."""
+    """UK regulatory bodies covered by Clearbook."""
     return """# UK Regulators
 
 ## SRA — Solicitors Regulation Authority

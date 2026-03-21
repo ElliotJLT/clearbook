@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from settle.models import (
+from clearbook.models import (
     Address,
     CompanyHealth,
     DisciplinaryAction,
@@ -43,21 +43,21 @@ class SettleService:
     @property
     def sra(self):
         if self._sra is None:
-            from settle.clients.sra import SRAClient
+            from clearbook.clients.sra import SRAClient
             self._sra = SRAClient(api_key=self._sra_key)
         return self._sra
 
     @property
     def fca(self):
         if self._fca is None:
-            from settle.clients.fca import FCAClient
+            from clearbook.clients.fca import FCAClient
             self._fca = FCAClient(email=self._fca_email, key=self._fca_key)
         return self._fca
 
     @property
     def ch(self):
         if self._ch is None:
-            from settle.clients.companies_house import CompaniesHouseClient
+            from clearbook.clients.companies_house import CompaniesHouseClient
             self._ch = CompaniesHouseClient(api_key=self._ch_key)
         return self._ch
 

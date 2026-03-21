@@ -1,6 +1,6 @@
 """Tests for core domain models."""
 
-from settle.models import (
+from clearbook.models import (
     Address,
     CompanyHealth,
     DisciplinaryAction,

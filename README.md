@@ -1,4 +1,4 @@
-# Settle
+# Clearbook
 
 MCP server for discovering UK regulated professional services. Agents find conveyancers, mortgage brokers, and financial advisers.
 
@@ -6,12 +6,12 @@ MCP server for discovering UK regulated professional services. Agents find conve
 
 ```bash
 pip install -e ".[dev]"
-python -m settle
+python -m clearbook
 ```
 
 ## What it does
 
-Settle aggregates data from UK regulatory registers (SRA, FCA, Companies House) into a single MCP server that AI agents can query to find and evaluate professional service providers.
+Clearbook aggregates data from UK regulatory registers (SRA, FCA, Companies House) into a single MCP server that AI agents can query to find and evaluate professional service providers.
 
 ## Tools
 
