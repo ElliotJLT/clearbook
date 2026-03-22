@@ -5,19 +5,17 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
-
+from clearbook.app import mcp  # noqa: F401 — re-export for __main__.py
 from clearbook.models import ProviderType, SearchFilters
 from clearbook.service import ClearbookService
 
-mcp = FastMCP(
-    "Clearbook",
-    instructions=(
-        "Discover and evaluate UK regulated professional service providers. "
-        "Search conveyancers, mortgage brokers, and financial advisers with "
-        "regulatory status, disciplinary history, and company health data."
-    ),
-)
+# Import conveyancing tools — they register themselves via @mcp.tool()
+import clearbook.tools.stamp_duty  # noqa: F401
+import clearbook.tools.check_lease_terms  # noqa: F401
+import clearbook.tools.explain_search_result  # noqa: F401
+import clearbook.tools.explain_survey_issue  # noqa: F401
+import clearbook.tools.parse_title_register  # noqa: F401
+import clearbook.tools.track_transaction  # noqa: F401
 
 _service: ClearbookService | None = None
 
