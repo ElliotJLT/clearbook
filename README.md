@@ -1,10 +1,10 @@
-# Clearbook
+# homebuyer-mcp
 
 MCP server for the UK home-buying journey. Agents find and evaluate conveyancers and mortgage brokers using official regulatory data.
 
 ## Why this exists
 
-Buying a house in the UK means trusting professionals you found on Google. Clearbook lets AI agents query official regulatory registers so you can evaluate conveyancers and mortgage brokers on facts, not SEO.
+Buying a house in the UK means trusting professionals you found on Google. homebuyer-mcp lets AI agents query official regulatory registers so you can evaluate conveyancers and mortgage brokers on facts, not SEO.
 
 It queries the **SRA Solicitors Register**, **FCA Financial Services Register**, and **Companies House API** in real-time, cross-references them, and returns enriched provider profiles with regulatory status, disciplinary history, and company health data.
 
@@ -51,9 +51,9 @@ Add to your `~/.mcp.json`:
 ```json
 {
   "mcpServers": {
-    "clearbook": {
+    "homebuyer-mcp": {
       "command": "python3",
-      "args": ["-m", "clearbook"],
+      "args": ["-m", "homebuyer-mcp"],
       "env": {
         "SRA_API_KEY": "your_key",
         "FCA_AUTH_EMAIL": "your_email",
@@ -68,11 +68,11 @@ Add to your `~/.mcp.json`:
 ### From source
 
 ```bash
-git clone https://github.com/ElliotJLT/clearbook.git
-cd clearbook
+git clone https://github.com/ElliotJLT/homebuyer-mcp.git
+cd homebuyer-mcp
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-python -m clearbook
+python -m homebuyer-mcp
 ```
 
 ## API keys (all free)
@@ -85,4 +85,4 @@ python -m clearbook
 
 ## Important
 
-Clearbook provides **factual data only**. No recommendations, no "best for you" rankings. It presents regulatory status, disciplinary history, and company health — the user decides. This is a regulatory requirement (FCA information vs advice boundary).
+homebuyer-mcp provides **factual data only**. No recommendations, no "best for you" rankings. It presents regulatory status, disciplinary history, and company health — the user decides. This is a regulatory requirement (FCA information vs advice boundary).
